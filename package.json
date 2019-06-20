@@ -1,0 +1,19 @@
+{
+  "author": "Mike Osterhout",
+  "name": "rds-migrate",
+  "version": "0.0.1",
+  "description": "migrations for aws rds",
+  "main": "index.js",
+  "scripts": {
+    "rds-migrate": "node index.js"
+  },
+  "bin": {
+    "rds-migrate": "cli.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.477.0",
+    "chalk": "^2.4.2",
+    "dotenv": "^8.0.0"
+  }
+}
