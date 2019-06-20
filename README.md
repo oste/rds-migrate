@@ -1,6 +1,6 @@
 # RDS-Migrate
 
-Simple migration tool for rds databaes
+Migration tool for rds databases
 
 ## Getting Started
 
