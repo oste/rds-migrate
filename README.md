@@ -23,22 +23,13 @@ Add to your package.json `scripts` section:
 
 Where the argument passed(`src/migrations`) is the location of your migrations directory relative to package.json directory.
 
+### How it works
+
+The script will create a MIGRATIONS schema and a table matching your `RDS_DATABASE` config in your database. The `RDS_DATABASE` table will contain the current migration version. Running `rds-migrate` will check the table and run new migrations if needed.
+
 ### Prerequisites
 
 * All migration scripts should have numeric filenames starting at 0 and be placed in the directory passed to rds-migrate command. For example `/src/migrations/0.sql`, `/src/migrations/1.sql` etc.
-
-* The first migration(`0.sql`) should contain a `Migration` table with `id` and `version` fields like the seen below
-
-```
--- -----------------------------------------------------
--- Table `APP_SCHEMA_ENV`.`Migration`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `APP_SCHEMA_ENV`.`Migration` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `version` INT NULL,
-  PRIMARY KEY (`id`))
-ENGINE = InnoDB;
-```
 
 * In order to use different database/schema names you can use the `APP_SCHEMA_ENV` placeholder. This will get replaced by your `RDS_DATABASE` environment variable.
 
