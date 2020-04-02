@@ -10,9 +10,11 @@ You will need the following environment variables:
 
 ```
 RDS_MIGRATION_VERSION=0
-RDS_RESOURCE_ARN=YOUR RDS Cluster ARN
-RDS_SECRET_ARN=YOUR RDS SECRET ARN
-RDS_DATABASE=YOUR RDS Database/Schema name
+RDS_RESOURCE_ARN=Your RDS Cluster ARN
+RDS_SECRET_ARN=Your RDS Secret ARN
+RDS_DATABASE=Your RDS Database/Schema name
+RDS_REGION=Your RDS Region ex. us-east-2
+RDS_RDBMS=Default is "mysql". "postgres" also accepted
 ```
 
 Add to your package.json `scripts` section:

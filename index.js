@@ -1,8 +1,11 @@
 const dotenv = require("dotenv");
 const AWS = require("aws-sdk");
+
+dotenv.config();
+
 const RDS = new AWS.RDSDataService({
   apiVersion: "2018-08-01",
-  region: "us-east-1"
+  region: process.env.RDS_REGION
 });
 
 const fs = require("fs");
@@ -10,23 +13,35 @@ const fs = require("fs");
 const chalk = require("chalk");
 const log = console.log;
 
-dotenv.config();
-
-var params = {
+const params = {
   resourceArn: process.env.RDS_RESOURCE_ARN,
   secretArn: process.env.RDS_SECRET_ARN
 };
 
+const engine = process.env.RDS_RDBMS || 'mysql';
+
 var checkMigrationsSchema = async () => {
   try {
-    params.sql = `CREATE SCHEMA IF NOT EXISTS MIGRATIONS DEFAULT CHARACTER SET utf8`;
+    if (engine === 'postgres') {
+      params.sql = `CREATE SCHEMA IF NOT EXISTS MIGRATIONS`;
+    } else {
+      params.sql = `CREATE SCHEMA IF NOT EXISTS MIGRATIONS DEFAULT CHARACTER SET utf8`;
+    }
+
     await RDS.executeStatement(params).promise();
 
-    params.sql = `CREATE TABLE IF NOT EXISTS MIGRATIONS.${process.env.RDS_DATABASE} (
-            id INT NOT NULL AUTO_INCREMENT,
-            version INT NULL DEFAULT NULL,
-            PRIMARY KEY (id))
-            ENGINE = InnoDB`;
+    if (engine === 'postgres') {
+      params.sql = `CREATE TABLE IF NOT EXISTS MIGRATIONS.${process.env.RDS_DATABASE} (
+              id SERIAL,
+              version INT NULL DEFAULT NULL,
+              PRIMARY KEY (id))`;
+    } else {
+      params.sql = `CREATE TABLE IF NOT EXISTS MIGRATIONS.${process.env.RDS_DATABASE} (
+              id INT NOT NULL AUTO_INCREMENT,
+              version INT NULL DEFAULT NULL,
+              PRIMARY KEY (id))
+              ENGINE = InnoDB`;
+    }
     await RDS.executeStatement(params).promise();
   } catch (error) {
     return Promise.reject(chalk.red(JSON.stringify(error)));
@@ -131,7 +146,11 @@ var migrate = async currentMigration => {
   return executeStatements().then(
     async () => {
       // params.database = process.env.RDS_DATABASE;
-      params.sql = `INSERT INTO MIGRATIONS.${process.env.RDS_DATABASE} (id, version) VALUES (1, ${currentMigration}) ON DUPLICATE KEY UPDATE version=VALUES(version);`;
+      if (engine === 'postgres') {
+        params.sql = `INSERT INTO MIGRATIONS.${process.env.RDS_DATABASE} (id, version) VALUES (1, ${currentMigration}) ON CONFLICT (id) DO UPDATE SET version = excluded.version;`;
+      } else {
+        params.sql = `INSERT INTO MIGRATIONS.${process.env.RDS_DATABASE} (id, version) VALUES (1, ${currentMigration}) ON DUPLICATE KEY UPDATE version=VALUES(version);`;
+      }
       let data = await RDS.executeStatement(params).promise();
       log(
         chalk(
