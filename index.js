@@ -1,7 +1,5 @@
-const dotenv = require("dotenv");
+require("dotenv").config();
 const AWS = require("aws-sdk");
-
-dotenv.config();
 
 const RDS = new AWS.RDSDataService({
   apiVersion: "2018-08-01",
