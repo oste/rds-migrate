@@ -3,7 +3,7 @@ const AWS = require("aws-sdk");
 
 const RDS = new AWS.RDSDataService({
   apiVersion: "2018-08-01",
-  region: process.env.RDS_REGION
+  region: process.env.RDS_REGION,
 });
 
 const fs = require("fs");
@@ -13,14 +13,15 @@ const log = console.log;
 
 const params = {
   resourceArn: process.env.RDS_RESOURCE_ARN,
-  secretArn: process.env.RDS_SECRET_ARN
+  secretArn: process.env.RDS_SECRET_ARN,
+  database: process.env.RDS_DATABASE,
 };
 
-const engine = process.env.RDS_RDBMS || 'mysql';
+const engine = process.env.RDS_RDBMS || "mysql";
 
 var checkMigrationsSchema = async () => {
   try {
-    if (engine === 'postgres') {
+    if (engine === "postgres") {
       params.sql = `CREATE SCHEMA IF NOT EXISTS MIGRATIONS`;
     } else {
       params.sql = `CREATE SCHEMA IF NOT EXISTS MIGRATIONS DEFAULT CHARACTER SET utf8`;
@@ -28,7 +29,7 @@ var checkMigrationsSchema = async () => {
 
     await RDS.executeStatement(params).promise();
 
-    if (engine === 'postgres') {
+    if (engine === "postgres") {
       params.sql = `CREATE TABLE IF NOT EXISTS MIGRATIONS.${process.env.RDS_DATABASE} (
               id SERIAL,
               version INT NULL DEFAULT NULL,
@@ -79,16 +80,14 @@ var checkMigrationTable = async () => {
   }
 };
 
-var migrate = async currentMigration => {
+var migrate = async (currentMigration) => {
   var executeStatements = async () => {
     var envMigration = parseInt(process.env.RDS_MIGRATION_VERSION);
     while (currentMigration < envMigration) {
       try {
         currentMigration++;
 
-        var filePath = `${process.env.PWD}/${
-          process.argv.slice(2)[0]
-        }/${currentMigration}.sql`;
+        var filePath = `./${process.argv.slice(2)[0]}/${currentMigration}.sql`;
         if (!fs.existsSync(filePath)) {
           return Promise.reject(chalk.red(`File does not exist ${filePath}`));
         }
@@ -144,7 +143,7 @@ var migrate = async currentMigration => {
   return executeStatements().then(
     async () => {
       // params.database = process.env.RDS_DATABASE;
-      if (engine === 'postgres') {
+      if (engine === "postgres") {
         params.sql = `INSERT INTO MIGRATIONS.${process.env.RDS_DATABASE} (id, version) VALUES (1, ${currentMigration}) ON CONFLICT (id) DO UPDATE SET version = excluded.version;`;
       } else {
         params.sql = `INSERT INTO MIGRATIONS.${process.env.RDS_DATABASE} (id, version) VALUES (1, ${currentMigration}) ON DUPLICATE KEY UPDATE version=VALUES(version);`;
@@ -161,7 +160,7 @@ var migrate = async currentMigration => {
 
       return Promise.resolve();
     },
-    error => {
+    (error) => {
       return Promise.reject(chalk.red(error));
     }
   );
@@ -174,7 +173,7 @@ checkMigrationsSchema()
     () => {
       log(chalk.green("SUCCESS"));
     },
-    reject => {
+    (reject) => {
       log(reject);
     }
   );
