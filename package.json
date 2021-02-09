@@ -1,10 +1,10 @@
 {
   "author": "Mike Osterhout",
   "name": "@milltechfx/rds-migrate",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "homepage": "https://github.com/oste/rds-migrate/blob/master/README.md",
   "publishConfig": {
-  "registry": "https://npm.pkg.github.com/"
+    "registry": "https://npm.pkg.github.com/"
   },
   "files": [
     "./index.js"
