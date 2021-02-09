@@ -87,7 +87,7 @@ var migrate = async (currentMigration) => {
       try {
         currentMigration++;
 
-        var filePath = `${process.env.SQL_FOLDER}/${currentMigration}.sql`;
+        var filePath = `./${process.argv.slice(2)[0]}/${currentMigration}.sql`;
         if (!fs.existsSync(filePath)) {
           return Promise.reject(chalk.red(`File does not exist ${filePath}`));
         }
