@@ -15,6 +15,7 @@ RDS_SECRET_ARN=Your RDS Secret ARN
 RDS_DATABASE=Your RDS Database/Schema name
 RDS_REGION=Your RDS Region ex. us-east-2
 RDS_RDBMS=Default is "mysql". "postgres" also accepted
+SQL_FOLDER=the folder where SQL files can be found
 ```
 
 Add to your package.json `scripts` section:
