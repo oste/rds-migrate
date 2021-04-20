@@ -7,7 +7,7 @@
     "registry": "https://npm.pkg.github.com/"
   },
   "files": [
-    "./build/*"
+    "build"
   ],
   "repository": {
     "type": "git",
