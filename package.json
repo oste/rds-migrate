@@ -16,15 +16,27 @@
   "description": "migrations for aws rds",
   "main": "index.js",
   "scripts": {
-    "rds-migrate": "node index.js"
+    "lint": "gts lint",
+    "clean": "gts clean",
+    "build": "tsc",
+    "fix": "gts fix",
+    "prepare": "npm run compile",
+    "pretest": "npm run compile",
+    "posttest": "npm run lint"
   },
   "bin": {
-    "rds-migrate": "cli.js"
+    "rds-migrate": "build/migrate.js"
   },
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.477.0",
     "chalk": "^2.4.2",
-    "dotenv": "^8.0.0"
+    "dotenv": "^8.0.0",
+    "gts": "^3.1.0"
+  },
+  "devDependencies": {
+    "gts": "^3.1.0",
+    "typescript": "^4.0.3",
+    "@types/node": "^14.11.2"
   }
 }
