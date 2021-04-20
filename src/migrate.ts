@@ -105,40 +105,33 @@ const migrate = async (currentMigration: number) => {
             chalk.magenta(currentMigration)
           )
         );
-        let contents = fs.readFileSync(filePath, 'utf8');
-        contents = contents.replace(
+        const contents = fs.readFileSync(filePath, 'utf8');
+        const sql = contents.replace(
           /APP_SCHEMA_ENV/g,
           process.env.RDS_DATABASE
         );
-        const statements = contents.split(';');
-        for (let i = 0; i < statements.length; i++) {
-          const sql = statements[i];
-          if (!sql || sql === '\n') {
-            continue;
-          }
-          log(
-            chalk(
-              chalk.blue('Info:'),
-              'Running Migration Statement',
-              chalk.magenta(i + 1),
-              '\n',
-              sql,
-              '\n'
-            )
-          );
-          params.sql = sql;
-          const data = await RDS.executeStatement(params).promise();
-          log(
-            chalk(
-              chalk.blue('Info:'),
-              'Success Migration Statement',
-              chalk.magenta(i + 1),
-              '\n',
-              chalk.gray(JSON.stringify(data)),
-              '\n\n'
-            )
-          );
-        }
+
+        log(
+          chalk(
+            chalk.blue('Info:'),
+            'Running Migration Statement',
+            '\n',
+            sql,
+            '\n'
+          )
+        );
+        params.sql = sql;
+        const data = await RDS.executeStatement(params).promise();
+        log(
+          chalk(
+            chalk.blue('Info:'),
+            'Success Migration Statement',
+            chalk.magenta(1),
+            '\n',
+            chalk.gray(JSON.stringify(data)),
+            '\n\n'
+          )
+        );
       } catch (error) {
         return Promise.reject(chalk.red(JSON.stringify(error)));
       }
