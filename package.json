@@ -14,7 +14,7 @@
     "url": "https://github.com/milltechfx/rds-migrate"
   },
   "description": "migrations for aws rds",
-  "main": "index.js",
+  "main" : "build/index.js",
   "scripts": {
     "lint": "gts lint",
     "clean": "gts clean",
@@ -29,6 +29,9 @@
   },
   "license": "ISC",
   "dependencies": {
+    "@aws-cdk/aws-rds": "^1.100.0",
+    "@aws-cdk/core": "^1.100.0",
+    "@milltechfx/base-aws-stack": "^1.0.46",
     "aws-sdk": "^2.477.0",
     "chalk": "^2.4.2",
     "dotenv": "^8.0.0",
