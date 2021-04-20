@@ -1,7 +1,7 @@
 {
   "author": "Mike Osterhout",
   "name": "@milltechfx/rds-migrate",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "homepage": "https://github.com/oste/rds-migrate/blob/master/README.md",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"
@@ -14,7 +14,7 @@
     "url": "https://github.com/milltechfx/rds-migrate"
   },
   "description": "migrations for aws rds",
-  "main" : "build/index.js",
+  "main": "build/index.js",
   "scripts": {
     "lint": "gts lint",
     "clean": "gts clean",
