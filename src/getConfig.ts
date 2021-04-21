@@ -3,6 +3,10 @@ const aws = require('aws-sdk');
 require('dotenv').config();
 
 export async function getConfig(stage: string, region: string) {
+  if (!process.env.STACK_NAME) {
+    throw new Error('Error: STACK_NAME environment variable missing');
+  }
+
   const options = {
     signatureVersion: 'v4',
     region: region,
