@@ -25,7 +25,9 @@ async function execute() {
   try {
     await execute();
   } catch (error) {
-    console.error('Database migration failed');
+    console.error(
+      'Database migration failed, no changes should have been committed'
+    );
     console.error(error);
   }
 })();

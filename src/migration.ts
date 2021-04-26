@@ -8,15 +8,16 @@ export class Migration {
   private client: typeof AWS.RDSDataService;
   private readonly engine: string;
   private readonly sqlFolder: string;
-  private commonParams: {
+  private rdsParams: {
     database: string;
     secretArn: string;
     resourceArn: string;
   };
+  private transactionId?: string;
 
   constructor(dbConfig: DbConfig, sqlFolder: string) {
     this.engine = dbConfig.engine || 'postgres';
-    this.commonParams = {
+    this.rdsParams = {
       resourceArn: dbConfig.resourceArn,
       secretArn: dbConfig.secretArn,
       database: dbConfig.database,
@@ -25,10 +26,9 @@ export class Migration {
   }
 
   async migrate() {
-    log.info(
-      `Running database migrations for DB ${this.commonParams.database}`
-    );
+    log.info(`Running database migrations for DB ${this.rdsParams.database}`);
 
+    await this.beginTransaction();
     await this.createMigrationsSchema();
     await this.createMigrationsTable();
 
@@ -48,12 +48,33 @@ export class Migration {
 
     await this.executeMigrationScripts(migrationScripts, currentVersion);
     await this.storeCurrentVersion(latestVersion);
+    await this.commitTransaction();
 
     log.info(
-      `SUCCESS: DB ${this.commonParams.database} migrated ${
+      `SUCCESS: DB ${this.rdsParams.database} migrated ${
         currentVersion >= 0 ? `from version ${currentVersion} ` : ''
       }to version ${latestVersion}`
     );
+  }
+
+  async beginTransaction() {
+    const transaction = await this.getClient()
+      .beginTransaction(this.rdsParams)
+      .promise();
+
+    this.transactionId = transaction.transactionId;
+  }
+
+  async commitTransaction() {
+    const transaction = await this.getClient()
+      .commitTransaction({
+        secretArn: this.rdsParams.secretArn,
+        resourceArn: this.rdsParams.resourceArn,
+        transactionId: this.transactionId,
+      })
+      .promise();
+
+    this.transactionId = transaction.transactionId;
   }
 
   listMigrationScripts(): Script[] {
@@ -85,12 +106,7 @@ export class Migration {
           'CREATE SCHEMA IF NOT EXISTS MIGRATIONS DEFAULT CHARACTER SET utf8',
       } as SqlStatement;
 
-      await this.getClient()
-        .executeStatement({
-          ...this.commonParams,
-          sql: createSchemaSql[this.engine],
-        })
-        .promise();
+      await this.executeInTransaction(createSchemaSql);
     } catch (error) {
       throw new Error(`create migration schema: ${JSON.stringify(error)}`);
     }
@@ -100,14 +116,14 @@ export class Migration {
     try {
       const createTableSql = {
         postgres: `
-            CREATE TABLE IF NOT EXISTS MIGRATIONS.${this.commonParams.database} 
+            CREATE TABLE IF NOT EXISTS MIGRATIONS.${this.rdsParams.database} 
             (
                 id SERIAL,
                 version INT NULL DEFAULT NULL,
                 PRIMARY KEY (id)
             )`,
         mysql: `
-            CREATE TABLE IF NOT EXISTS MIGRATIONS.${this.commonParams.database}
+            CREATE TABLE IF NOT EXISTS MIGRATIONS.${this.rdsParams.database}
             (
                 id      INT NOT NULL AUTO_INCREMENT,
                 version INT NULL DEFAULT NULL,
@@ -115,12 +131,7 @@ export class Migration {
             ) ENGINE = InnoDB`,
       } as SqlStatement;
 
-      await this.getClient()
-        .executeStatement({
-          ...this.commonParams,
-          sql: createTableSql[this.engine],
-        })
-        .promise();
+      await this.executeInTransaction(createTableSql);
     } catch (error) {
       throw new Error(`create migrations table: ${JSON.stringify(error)}`);
     }
@@ -130,15 +141,10 @@ export class Migration {
     try {
       const getVersionSql = `
         SELECT version 
-        FROM MIGRATIONS.${this.commonParams.database} 
+        FROM MIGRATIONS.${this.rdsParams.database} 
         WHERE id = 1`;
 
-      const data = await this.getClient()
-        .executeStatement({
-          ...this.commonParams,
-          sql: getVersionSql,
-        })
-        .promise();
+      const data = await this.executeInTransaction(getVersionSql);
 
       if (data.records.length === 1) {
         return parseInt(data.records[0][0]['longValue']);
@@ -148,6 +154,19 @@ export class Migration {
     } catch (error) {
       throw new Error(`get current version: ${JSON.stringify(error)}`);
     }
+  }
+
+  async executeInTransaction(sqlStatement: SqlStatement | string) {
+    return await this.getClient()
+      .executeStatement({
+        ...this.rdsParams,
+        sql:
+          typeof sqlStatement === 'string'
+            ? sqlStatement
+            : sqlStatement[this.engine],
+        transactionId: this.transactionId,
+      })
+      .promise();
   }
 
   async executeMigrationScripts(scripts: Script[], currentVersion: number) {
@@ -161,12 +180,7 @@ export class Migration {
 
       try {
         const migrationSql = fs.readFileSync(filePath, 'utf8');
-        await this.getClient()
-          .executeStatement({
-            ...this.commonParams,
-            sql: migrationSql,
-          })
-          .promise();
+        await this.executeInTransaction(migrationSql);
         log.info(`OK: migrate to version ${script.version}`);
       } catch (error) {
         throw new Error(
@@ -179,25 +193,20 @@ export class Migration {
   async storeCurrentVersion(latestVersion: number) {
     const storeVersionSql = {
       postgres: `
-        INSERT INTO MIGRATIONS.${this.commonParams.database}
+        INSERT INTO MIGRATIONS.${this.rdsParams.database}
             (id, version) 
         VALUES 
             (1, ${latestVersion}) 
         ON CONFLICT (id) DO UPDATE SET version = excluded.version;`,
       mysql: `
-        INSERT INTO MIGRATIONS.${this.commonParams.database} 
+        INSERT INTO MIGRATIONS.${this.rdsParams.database} 
             (id, version) 
         VALUES 
                (1, ${latestVersion}) 
         ON DUPLICATE KEY UPDATE version=VALUES(version);`,
     } as SqlStatement;
 
-    await this.getClient()
-      .executeStatement({
-        ...this.commonParams,
-        sql: storeVersionSql[this.engine],
-      })
-      .promise();
+    await this.executeInTransaction(storeVersionSql);
   }
 
   getClient() {
