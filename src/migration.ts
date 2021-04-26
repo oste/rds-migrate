@@ -1,5 +1,4 @@
-import {getConfig} from './getConfig';
-import {DbConfig, SqlStatement} from './types';
+import {DbConfig, Script, SqlStatement} from './types';
 const AWS = require('aws-sdk');
 const fs = require('fs');
 
@@ -34,16 +33,48 @@ export class Migration {
     await this.createMigrationsTable();
 
     const currentVersion = await this.getCurrentVersion();
-    const latestVersion = 0; //TODO read .sql files instead
+    const migrationScripts = this.listMigrationScripts();
+    const latestVersion = this.getLatestVersion(migrationScripts);
 
-    await this.executeMigrationScripts(currentVersion, latestVersion);
-    await this.storeCurrentVersion(currentVersion);
+    if (currentVersion === latestVersion) {
+      log.info(`Already up to date with version ${latestVersion}, exiting`);
+      return;
+    }
+
+    log.info(
+      `Current version: ${currentVersion >= 0 ? currentVersion : 'none'}`
+    );
+    log.info(`Latest version: ${latestVersion}`);
+
+    await this.executeMigrationScripts(migrationScripts, currentVersion);
+    await this.storeCurrentVersion(latestVersion);
 
     log.info(
       `SUCCESS: DB ${this.commonParams.database} migrated ${
         currentVersion >= 0 ? `from version ${currentVersion} ` : ''
       }to version ${latestVersion}`
     );
+  }
+
+  listMigrationScripts(): Script[] {
+    const files = fs.readdirSync(this.sqlFolder);
+
+    const scripts = files.map((filename: string) => ({
+      version: parseInt(filename.replace(/(^\d+)(.+$)/i, '$1')), //consider digits at the beginning a version number
+      filename: filename,
+    }));
+
+    if (!scripts) {
+      throw new Error(`No sql scripts found in ${this.sqlFolder}`);
+    }
+
+    return scripts.sort((a: Script, b: Script) =>
+      a.version > b.version ? 1 : -1
+    );
+  }
+
+  getLatestVersion(scripts: Script[]) {
+    return Math.max(...scripts.map(script => script.version));
   }
 
   async createMigrationsSchema() {
@@ -119,15 +150,16 @@ export class Migration {
     }
   }
 
-  async executeMigrationScripts(currentVersion: number, latestVersion: number) {
-    while (latestVersion > currentVersion) {
-      try {
-        currentVersion++;
-        const filePath = `${this.sqlFolder}/${currentVersion}.sql`;
-        if (!fs.existsSync(filePath)) {
-          throw new Error(`File does not exist ${filePath}`);
-        }
+  async executeMigrationScripts(scripts: Script[], currentVersion: number) {
+    scripts = scripts.filter(script => script.version > currentVersion);
 
+    for (const script of scripts) {
+      const filePath = `${this.sqlFolder}/${script.filename}`;
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`File does not exist ${filePath}`);
+      }
+
+      try {
         const migrationSql = fs.readFileSync(filePath, 'utf8');
         await this.getClient()
           .executeStatement({
@@ -135,7 +167,7 @@ export class Migration {
             sql: migrationSql,
           })
           .promise();
-        log.info(`OK: migrate to version ${currentVersion}`);
+        log.info(`OK: migrate to version ${script.version}`);
       } catch (error) {
         throw new Error(
           `migrating to version ${currentVersion}: ${JSON.stringify(error)}`

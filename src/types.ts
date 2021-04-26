@@ -10,3 +10,8 @@ export interface SqlStatement {
   mysql: string;
   [key: string]: string;
 }
+
+export interface Script {
+  version: number;
+  filename: string;
+}
