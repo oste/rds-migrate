@@ -3,6 +3,11 @@ import * as ssm from '@aws-cdk/aws-ssm';
 import * as cdk from '@aws-cdk/core';
 import * as baseStack from '@milltechfx/base-aws-stack';
 
+/**
+ * Store DB config in SSM to be used by rds-migrate
+ * @param scope
+ * @param database rds.ServerlessCluster
+ */
 export function configureMigration(
   scope: cdk.Construct,
   database: rds.ServerlessCluster
