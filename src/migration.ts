@@ -85,7 +85,7 @@ export class Migration {
       filename: filename,
     }));
 
-    if (!scripts) {
+    if (!scripts.length) {
       throw new Error(`No sql scripts found in ${this.sqlFolder}`);
     }
 
