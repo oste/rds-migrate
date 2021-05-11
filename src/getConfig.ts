@@ -43,7 +43,7 @@ export async function getConfig(
     const secretsManager = new aws.SecretsManager(options);
 
     const secretData = await secretsManager
-      .getSecretValue({SecretId: ssmConfig.secretName})
+      .getSecretValue({SecretId: ssmConfig.secretArn})
       .promise();
 
     const secretConfig = JSON.parse(secretData.SecretString);

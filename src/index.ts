@@ -22,7 +22,6 @@ export function configureMigration(
     ),
     stringValue: JSON.stringify({
       secretArn: database.secret!.secretArn,
-      secretName: database.secret?.secretName,
       clusterArn: database.clusterArn,
     }),
   });
