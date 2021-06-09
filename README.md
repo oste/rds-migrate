@@ -12,6 +12,9 @@ assets/
 ```
 Initial digits are used for numeric ordering, zeros at the beginning and underscores are for readability purposes only.
 
+## Limitation
+Do not modify scripts already deployed to DEV or further with this package. Once a script with given number has been ran against an environment, it will always be skipped even if it has been changed, therefore, please add new script if you already deployed it to DEV or further instead.
+
 ## Getting Started
 
 Install the package:
