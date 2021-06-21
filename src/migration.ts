@@ -41,6 +41,11 @@ export class Migration {
       return;
     }
 
+    if(currentVersion > latestVersion) {
+      log.info(`Current DB version ${currentVersion} is ahead of the latest version in branch: ${latestVersion}, exiting`);
+      return;
+    }
+
     log.info(
       `Current version: ${currentVersion >= 0 ? currentVersion : 'none'}`
     );
