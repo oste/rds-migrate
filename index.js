@@ -1,14 +1,14 @@
 require("dotenv").config();
-const AWS = require("aws-sdk");
+const { RDSDataService } = require("@aws-sdk/client-rds-data");
+const fs = require("fs");
+const chalk = require("chalk");
 
-const RDS = new AWS.RDSDataService({
+const RDS = new RDSDataService({
   apiVersion: "2018-08-01",
-  region: process.env.RDS_REGION
+  region: process.env.RDS_REGION,
+  database: process.env.RDS_DATABASE,
 });
 
-const fs = require("fs");
-
-const chalk = require("chalk");
 const log = console.log;
 
 const params = {
@@ -101,10 +101,6 @@ var migrate = async currentMigration => {
           )
         );
         var contents = fs.readFileSync(filePath, "utf8");
-        var contents = contents.replace(
-          /APP_SCHEMA_ENV/g,
-          process.env.RDS_DATABASE
-        );
         var statements = contents.split(";");
         for (let i = 0; i < statements.length; i++) {
           let sql = statements[i];

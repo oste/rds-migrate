@@ -33,8 +33,6 @@ The script will create a MIGRATIONS schema and a table matching your `RDS_DATABA
 
 * All migration scripts should have numeric filenames starting at 0 and be placed in the directory passed to rds-migrate command. For example `/src/migrations/0.sql`, `/src/migrations/1.sql` etc.
 
-* In order to use different database/schema names you can use the `APP_SCHEMA_ENV` placeholder. This will get replaced by your `RDS_DATABASE` environment variable.
-
 ## Running the tests
 
 TODO
