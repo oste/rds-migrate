@@ -1,16 +1,19 @@
 # RDS-Migrate
 
-Migration tool for AWS RDS databases
+Migration tool for AWS RDS databases, allows downgrade
 
 ## Prerequisites
-All your migration SQL scripts need to sit directly under a folder (ideally `assets/sql`) prefixed with a numeric version number, e.g.:
+All your migration SQL scripts need to sit directly under a folder (ideally `assets/sql`) prefixed with a numeric version number, e.g.
+For adding new versions, use the `rds-new-version` command from the root of your repository, it will create two new files with a timestamp name, one will have the _down suffix and to allow migrating down, a script reverting the changes in the main file needs to be added.
+
 ```typescript
 assets/
   sql/
-    01_initialDbStructure.sql
-    02_someAdditionalChanges.sql
+    1633421853133.sql
+    1633421853133_down.sql
+    1633421853458.sql
+    1633421853458_down.sql
 ```
-Initial digits are used for numeric ordering, zeros at the beginning and underscores are for readability purposes only.
 
 ## Limitation
 Do not modify scripts already deployed to DEV or further with this package. Once a script with given number has been run against an environment, it will always be skipped even if it has been changed, therefore, please add new script instead.
