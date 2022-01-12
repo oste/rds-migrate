@@ -38,7 +38,9 @@ export class Migration {
         `Legacy migration table found with version ${currentLegacyVersion}`
       );
       await this.executeInTransaction(
-        `DROP TABLE migrations.${this.rdsParams.database.toLowerCase()}`
+        `DROP TABLE migrations.${this.rdsParams.database.toLowerCase()}`,
+        {},
+        true
       );
 
       log.info('Deleted legacy migrations table structure');
