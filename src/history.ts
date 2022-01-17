@@ -186,7 +186,7 @@ export class History {
       upgrade: unexecutedMigrations.filter(
         (script: Script) => script.version <= targetVersion
       ),
-      downgrade: executedMigrationsToDowngrade,
+      downgrade: executedMigrationsToDowngrade.reverse(),
     };
   }
 
