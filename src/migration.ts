@@ -55,11 +55,12 @@ export class Migration {
       this.sqlFolder
     );
 
-    const resultVersion = await this.history.migrate(
-      targetVersion,
-      currentLegacyVersion,
-      allowDowngrade
-    );
+    const resultVersion = await this.history.migrate({
+      targetVersion: targetVersion,
+      currentLegacyVersion: currentLegacyVersion,
+      allowDowngrade: allowDowngrade,
+    });
+
     await this.commitTransaction();
 
     log.info(`Done, latest version: ${resultVersion}`);
@@ -145,7 +146,7 @@ export class Migration {
     }
   }
 
-  async getCurrentLegacyVersion() {
+  async getCurrentLegacyVersion(): Promise<number | false> {
     try {
       const oldStructureResult = await this.executeInTransaction(
         `

@@ -72,7 +72,11 @@ describe('migrate', () => {
     await new Migration(dbConfig, 'assets/sql').migrate();
     expect(beginTransactionSpy).toBeCalledTimes(1);
     expect(commitTransactionSpy).toBeCalledTimes(1);
-    expect(historyMigrateSpy).toBeCalledWith(false, 3, false);
+    expect(historyMigrateSpy).toBeCalledWith({
+      targetVersion: false,
+      currentLegacyVersion: 3,
+      allowDowngrade: false,
+    });
     expect(executeStatementSpy).toBeCalledWith(
       expect.objectContaining({
         sql: expect.stringContaining('DROP TABLE migrations'),
@@ -107,7 +111,11 @@ describe('migrate', () => {
     await new Migration(dbConfig, 'assets/sql').migrate(3, true);
     expect(beginTransactionSpy).toBeCalledTimes(1);
     expect(commitTransactionSpy).toBeCalledTimes(1);
-    expect(historyMigrateSpy).toBeCalledWith(3, false, true);
+    expect(historyMigrateSpy).toBeCalledWith({
+      targetVersion: 3,
+      currentLegacyVersion: false,
+      allowDowngrade: true,
+    });
     expect(executeStatementSpy).not.toBeCalledWith(
       expect.objectContaining({
         sql: expect.stringContaining('DROP TABLE migrations'),

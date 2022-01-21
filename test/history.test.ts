@@ -27,7 +27,7 @@ describe('history', () => {
         jest.spyOn(fs, 'readFileSync').mockReturnValueOnce(item.sqlCode);
       });
 
-      await new History(executeSpy, false, SQL_FOLDER).migrate();
+      await new History(executeSpy, false, SQL_FOLDER).migrate({});
       expect(executeSpy).toBeCalledWith(historyMockData.repo[2].sqlCode);
       expect(executeSpy).toBeCalledWith(
         expect.any(String),
@@ -50,7 +50,9 @@ describe('history', () => {
         jest.spyOn(fs, 'readFileSync').mockReturnValueOnce(item.sqlCode);
       });
 
-      await new History(executeSpy, false, SQL_FOLDER).migrate(false, 1);
+      await new History(executeSpy, false, SQL_FOLDER).migrate({
+        currentLegacyVersion: 1,
+      });
       expect(executeSpy).toBeCalledWith(
         expect.stringContaining('INSERT INTO MIGRATIONS.history'),
         expect.objectContaining({
@@ -70,11 +72,9 @@ describe('history', () => {
         jest.spyOn(fs, 'readFileSync').mockReturnValueOnce(item.sqlCode);
       });
 
-      await new History(executeSpy, false, SQL_FOLDER).migrate(
-        false,
-        false,
-        true
-      );
+      await new History(executeSpy, false, SQL_FOLDER).migrate({
+        allowDowngrade: true,
+      });
       expect(executeSpy).toBeCalledWith(historyMockData.db[1][4].stringValue);
     });
 
@@ -89,7 +89,7 @@ describe('history', () => {
         jest.spyOn(fs, 'readFileSync').mockReturnValueOnce(item.sqlCode);
       });
 
-      await new History(executeSpy, false, SQL_FOLDER).migrate();
+      await new History(executeSpy, false, SQL_FOLDER).migrate({});
       expect(executeSpy).not.toBeCalledWith(
         historyMockData.db[1][4].stringValue
       );
@@ -106,7 +106,9 @@ describe('history', () => {
         jest.spyOn(fs, 'readFileSync').mockReturnValueOnce(item.sqlCode);
       });
 
-      await new History(executeSpy, false, SQL_FOLDER).migrate(2);
+      await new History(executeSpy, false, SQL_FOLDER).migrate({
+        targetVersion: 2,
+      });
       expect(executeSpy).not.toBeCalledWith(historyMockData.repo[2].sqlCode);
     });
 
@@ -126,11 +128,9 @@ describe('history', () => {
         jest.spyOn(fs, 'readFileSync').mockReturnValueOnce(item.sqlCode);
       });
 
-      await new History(executeSpy, false, SQL_FOLDER).migrate(
-        false,
-        false,
-        true
-      );
+      await new History(executeSpy, false, SQL_FOLDER).migrate({
+        allowDowngrade: true,
+      });
       expect(executeSpy).toBeCalledWith(
         historyMockData.dbAhead[0][4].stringValue
       );

@@ -44,30 +44,30 @@ export class History {
     console.log('Legacy history stored in the new format');
   }
 
-  public async migrate(
-    targetVersion: number | false = false,
-    legacyCurrentVersion: number | false = false,
-    allowDowngrade: boolean = false
-  ) {
+  public async migrate(props: {
+    targetVersion?: number | false;
+    currentLegacyVersion?: number | false;
+    allowDowngrade?: boolean;
+  }) {
     const migrationScripts = this.listMigrationScripts() as Script[];
-    await this.storeLegacyHistory(legacyCurrentVersion, migrationScripts);
+    await this.storeLegacyHistory(props.currentLegacyVersion, migrationScripts);
 
     this.storedHistory = await this.loadHistory();
 
-    if (!targetVersion) {
-      targetVersion = [...migrationScripts].reverse()[0].version || -1;
+    if (!props.targetVersion) {
+      props.targetVersion = [...migrationScripts].reverse()[0].version || -1;
     }
 
     const historyDiff = History.getHistoryDiff(
       this.storedHistory,
       migrationScripts,
-      targetVersion
+      props.targetVersion
     );
 
     console.log('History diff calculated', {diff: JSON.stringify(historyDiff)});
 
-    await this.executeDiff(historyDiff, allowDowngrade);
-    return targetVersion;
+    await this.executeDiff(historyDiff, props.allowDowngrade);
+    return props.targetVersion;
   }
 
   private async executeDiff(diff: ScriptDiff, allowDowngrade: boolean = false) {
