@@ -169,8 +169,6 @@ export class History {
     fileHistory: Script[],
     targetVersion: number
   ): ScriptDiff {
-    console.log(storedHistory);
-    console.log(fileHistory);
     const unexecutedMigrations = fileHistory.filter(
       fileScript =>
         !storedHistory.some(dbScript => History.isSame(fileScript, dbScript))
@@ -191,13 +189,6 @@ export class History {
   }
 
   private static isSame(fileScript: Script, dbScript: Script) {
-    console.log(
-      'COMPARE',
-      fileScript.version,
-      typeof fileScript.version,
-      dbScript.version,
-      typeof dbScript.version
-    );
     if (fileScript.version !== dbScript.version) {
       return false;
     }
@@ -211,8 +202,6 @@ export class History {
         }
       );
     }
-
-    console.log('is the same');
 
     return true;
   }
@@ -229,7 +218,6 @@ export class History {
       return [];
     }
 
-    console.log(JSON.stringify(historySelect));
     return historySelect.records.map((record: any) => ({
       id: record[0].longValue,
       version: parseInt(record[1].stringValue),

@@ -1,7 +1,6 @@
 import {DbConfig, SqlStatement, StatementParameters} from './types';
 import {History} from './history';
 const AWS = require('aws-sdk');
-const fs = require('fs');
 
 const log = console;
 
@@ -96,7 +95,7 @@ export class Migration {
 
       await this.executeInTransaction(createSchemaSql, {}, true);
     } catch (error) {
-      throw new Error(`create migration schema: ${JSON.stringify(error)}`);
+      throw new Error(`create migration schema: ${error}`);
     }
   }
 
@@ -178,7 +177,7 @@ export class Migration {
 
       return false;
     } catch (error) {
-      throw new Error(`get current version: ${JSON.stringify(error)}`);
+      throw new Error(`get current version: ${error}`);
     }
   }
 

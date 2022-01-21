@@ -25,11 +25,6 @@ export interface ScriptDiff {
   downgrade: Script[];
 }
 
-export interface Flags {
-  allowDowngrade?: boolean;
-  force?: boolean;
-}
-
 export interface StatementParameters {
   [key: string]: string;
 }
