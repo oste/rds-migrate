@@ -55,6 +55,6 @@ export async function getConfig(
       engine: secretConfig.engine,
     };
   } catch (error) {
-    throw new Error(`reading config: ${JSON.stringify(error)}`);
+    throw new Error(`reading config: ${error}`);
   }
 }

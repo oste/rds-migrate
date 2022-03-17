@@ -1,6 +1,6 @@
-import {DbConfig, Script, SqlStatement} from './types';
+import {DbConfig, SqlStatement, StatementParameters} from './types';
+import {History} from './history';
 const AWS = require('aws-sdk');
-const fs = require('fs');
 
 const log = console;
 
@@ -14,6 +14,7 @@ export class Migration {
     resourceArn: string;
   };
   private transactionId?: string;
+  private history: History | undefined;
 
   constructor(dbConfig: DbConfig, sqlFolder: string) {
     this.engine = dbConfig.engine || 'postgres';
@@ -25,41 +26,44 @@ export class Migration {
     this.sqlFolder = sqlFolder;
   }
 
-  async migrate() {
+  async migrate(targetVersion: number | false = false, allowDowngrade = false) {
     log.info(`Running database migrations for DB ${this.rdsParams.database}`);
 
     await this.beginTransaction();
+
+    const currentLegacyVersion = await this.getCurrentLegacyVersion();
+    if (currentLegacyVersion !== false) {
+      log.info(
+        `Legacy migration table found with version ${currentLegacyVersion}`
+      );
+      await this.executeInTransaction(
+        `DROP TABLE migrations.${this.rdsParams.database.toLowerCase()}`,
+        {},
+        true
+      );
+
+      log.info('Deleted legacy migrations table structure');
+    }
+
     await this.createMigrationsSchema();
     await this.createMigrationsTable();
 
-    const currentVersion = await this.getCurrentVersion();
-    const migrationScripts = this.listMigrationScripts();
-    const latestVersion = this.getLatestVersion(migrationScripts);
-
-    if (currentVersion === latestVersion) {
-      log.info(`Already up to date with version ${latestVersion}, exiting`);
-      return;
-    }
-
-    if(currentVersion > latestVersion) {
-      log.info(`Current DB version ${currentVersion} is ahead of the latest version in branch: ${latestVersion}, exiting`);
-      return;
-    }
-
-    log.info(
-      `Current version: ${currentVersion >= 0 ? currentVersion : 'none'}`
+    this.history = new History(
+      (sqlStatement: SqlStatement | string, parameters?: StatementParameters) =>
+        this.executeInTransaction(sqlStatement, parameters),
+      currentLegacyVersion,
+      this.sqlFolder
     );
-    log.info(`Latest version: ${latestVersion}`);
 
-    await this.executeMigrationScripts(migrationScripts, currentVersion);
-    await this.storeCurrentVersion(latestVersion);
+    const resultVersion = await this.history.migrate({
+      targetVersion: targetVersion,
+      currentLegacyVersion: currentLegacyVersion,
+      allowDowngrade: allowDowngrade,
+    });
+
     await this.commitTransaction();
 
-    log.info(
-      `SUCCESS: DB ${this.rdsParams.database} migrated ${
-        currentVersion >= 0 ? `from version ${currentVersion} ` : ''
-      }to version ${latestVersion}`
-    );
+    log.info(`Done, latest version: ${resultVersion}`);
   }
 
   async beginTransaction() {
@@ -82,27 +86,6 @@ export class Migration {
     this.transactionId = transaction.transactionId;
   }
 
-  listMigrationScripts(): Script[] {
-    const files = fs.readdirSync(this.sqlFolder);
-
-    const scripts = files.map((filename: string) => ({
-      version: parseInt(filename.replace(/(^\d+)(.+$)/i, '$1')), //consider digits at the beginning a version number
-      filename: filename,
-    }));
-
-    if (!scripts.length) {
-      throw new Error(`No sql scripts found in ${this.sqlFolder}`);
-    }
-
-    return scripts.sort((a: Script, b: Script) =>
-      a.version > b.version ? 1 : -1
-    );
-  }
-
-  getLatestVersion(scripts: Script[]) {
-    return Math.max(...scripts.map(script => script.version));
-  }
-
   async createMigrationsSchema() {
     try {
       const createSchemaSql = {
@@ -111,9 +94,9 @@ export class Migration {
           'CREATE SCHEMA IF NOT EXISTS MIGRATIONS DEFAULT CHARACTER SET utf8',
       } as SqlStatement;
 
-      await this.executeInTransaction(createSchemaSql);
+      await this.executeInTransaction(createSchemaSql, {}, true);
     } catch (error) {
-      throw new Error(`create migration schema: ${JSON.stringify(error)}`);
+      throw new Error(`create migration schema: ${error}`);
     }
   }
 
@@ -121,97 +104,132 @@ export class Migration {
     try {
       const createTableSql = {
         postgres: `
-            CREATE TABLE IF NOT EXISTS MIGRATIONS.${this.rdsParams.database} 
+            CREATE TABLE IF NOT EXISTS migrations.history
             (
                 id SERIAL,
-                version INT NULL DEFAULT NULL,
+                name VARCHAR NULL DEFAULT NULL,
+                version NUMERIC,
+                executed TIMESTAMPTZ DEFAULT current_timestamp NULL,
+                sql_code TEXT,
+                downgrade_sql_code TEXT DEFAULT NULL,
                 PRIMARY KEY (id)
-            )`,
-        mysql: `
-            CREATE TABLE IF NOT EXISTS MIGRATIONS.${this.rdsParams.database}
+            );
+            CREATE TABLE IF NOT EXISTS migrations.log
             (
-                id      INT NOT NULL AUTO_INCREMENT,
-                version INT NULL DEFAULT NULL,
+                id SERIAL,
+                executed TIMESTAMPTZ DEFAULT current_timestamp NULL,
+                sql_code TEXT,
                 PRIMARY KEY (id)
-            ) ENGINE = InnoDB`,
+            );
+            `,
+        mysql: `
+            CREATE TABLE IF NOT EXISTS migrations.history
+            (
+                id INT NOT NULL AUTO_INCREMENT,
+                executed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                sql_code TEXT,
+                PRIMARY KEY (id)
+            ) ENGINE = InnoDB;
+            CREATE TABLE IF NOT EXISTS migrations.log
+            (
+                id INT NOT NULL AUTO_INCREMENT,
+                executed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                sql_code TEXT,
+                PRIMARY KEY (id)
+            );
+            `,
       } as SqlStatement;
 
-      await this.executeInTransaction(createTableSql);
+      await this.executeInTransaction(createTableSql, {}, true);
     } catch (error) {
       throw new Error(`create migrations table: ${JSON.stringify(error)}`);
     }
   }
 
-  async getCurrentVersion() {
+  async getCurrentLegacyVersion(): Promise<number | false> {
     try {
+      const oldStructureResult = await this.executeInTransaction(
+        `
+          SELECT column_name
+          FROM information_schema.columns
+          WHERE 
+                table_name='${this.rdsParams.database.toLowerCase()}' 
+                AND column_name='version' 
+                AND table_schema='migrations';
+          ;`,
+        {},
+        true
+      );
+
+      if (!oldStructureResult.records.length) {
+        return false;
+      }
+
       const getVersionSql = `
-        SELECT version 
-        FROM MIGRATIONS.${this.rdsParams.database} 
+        SELECT version
+        FROM MIGRATIONS.${this.rdsParams.database}
         WHERE id = 1`;
 
-      const data = await this.executeInTransaction(getVersionSql);
+      const data = await this.executeInTransaction(getVersionSql, {}, true);
 
       if (data.records.length === 1) {
         return parseInt(data.records[0][0]['longValue']);
       }
 
-      return -1;
+      return false;
     } catch (error) {
-      throw new Error(`get current version: ${JSON.stringify(error)}`);
+      throw new Error(`get current version: ${error}`);
     }
   }
 
-  async executeInTransaction(sqlStatement: SqlStatement | string) {
-    return await this.getClient()
+  async executeInTransaction(
+    sqlStatement: SqlStatement | string,
+    parameters: StatementParameters = {},
+    skipWritingLog: boolean = false
+  ): Promise<{records: any}> {
+    const client = this.getClient();
+    const statement =
+      typeof sqlStatement === 'string'
+        ? sqlStatement
+        : sqlStatement[this.engine];
+
+    const formattedParameters = Object.keys(parameters).map(key => ({
+      name: key,
+      value: {
+        stringValue: parameters[key],
+      },
+    }));
+
+    const result = await client
       .executeStatement({
         ...this.rdsParams,
-        sql:
-          typeof sqlStatement === 'string'
-            ? sqlStatement
-            : sqlStatement[this.engine],
+        sql: statement,
         transactionId: this.transactionId,
+        parameters: formattedParameters,
       })
       .promise();
-  }
 
-  async executeMigrationScripts(scripts: Script[], currentVersion: number) {
-    scripts = scripts.filter(script => script.version > currentVersion);
-
-    for (const script of scripts) {
-      const filePath = `${this.sqlFolder}/${script.filename}`;
-      if (!fs.existsSync(filePath)) {
-        throw new Error(`File does not exist ${filePath}`);
-      }
-
-      try {
-        const migrationSql = fs.readFileSync(filePath, 'utf8');
-        await this.executeInTransaction(migrationSql);
-        log.info(`OK: migrate to version ${script.version}`);
-      } catch (error) {
-        throw new Error(
-          `migrating to version ${currentVersion}: ${JSON.stringify(error)}`
-        );
-      }
+    if (!skipWritingLog) {
+      await client
+        .executeStatement({
+          ...this.rdsParams,
+          sql: `INSERT INTO MIGRATIONS.log
+            (sql_code)
+            VALUES (:sqlCode)`,
+          parameters: [
+            {
+              name: 'sqlCode',
+              value: {
+                stringValue: statement,
+              },
+            },
+          ],
+          transactionId: this.transactionId,
+        })
+        .promise();
     }
-  }
 
-  async storeCurrentVersion(latestVersion: number) {
-    const storeVersionSql = {
-      postgres: `
-        INSERT INTO MIGRATIONS.${this.rdsParams.database}
-            (id, version) 
-        VALUES 
-            (1, ${latestVersion}) 
-        ON CONFLICT (id) DO UPDATE SET version = excluded.version;`,
-      mysql: `
-        INSERT INTO MIGRATIONS.${this.rdsParams.database} 
-            (id, version) 
-        VALUES 
-               (1, ${latestVersion}) 
-        ON DUPLICATE KEY UPDATE version=VALUES(version);`,
-    } as SqlStatement;
-
-    await this.executeInTransaction(storeVersionSql);
+    return result;
   }
 
   getClient() {

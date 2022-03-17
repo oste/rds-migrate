@@ -1,0 +1,55 @@
+{
+  "repo": [
+    {
+      "name": "01_firstScript.sql",
+      "version": 1,
+      "sqlCode" : "CREATE TABLE table1;"
+    },
+    {
+      "name": "02_secondScript.sql",
+      "version": 2,
+      "sqlCode" : "CREATE TABLE table2;"
+    },
+    {
+      "name": "04_fourthScript.sql",
+      "version": 4,
+      "sqlCode" : "CREATE TABLE table4;"
+    },
+    {
+      "name": "04_fourthScript_down.sql",
+      "version": 4,
+      "sqlCode" : "DROP TABLE table4;"
+    }
+  ],
+  "db": [
+    [
+      {"longValue": 1},
+      {"stringValue": "1"},
+      {"stringValue": "01_firstScript.sql"},
+      {"stringValue": "CREATE TABLE table1;"},
+      {"isNull": true}
+    ],
+    [
+      {"longValue": 2},
+      {"stringValue": "2"},
+      {"stringValue": "02_secondScript.sql"},
+      {"stringValue": "CREATE TABLE table2;"},
+      {
+        "isNull": false,
+        "stringValue" :  "DROP TABLE table2;"
+      }
+    ]
+  ],
+  "dbAhead" : [
+    [
+      {"longValue": 3},
+      {"stringValue": "3"},
+      {"stringValue": "03_thirdScript.sql"},
+      {"stringValue": "CREATE TABLE table3;"},
+      {
+        "isNull": false,
+        "stringValue" :  "DROP TABLE table3;"
+      }
+    ]
+  ]
+}
