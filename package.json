@@ -17,8 +17,8 @@
   },
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-rds-data": "^3.27.0",
-    "chalk": "^2.4.2",
-    "dotenv": "^10.0.0"
+    "@aws-sdk/client-rds-data": "^3.56.0",
+    "chalk": "^4.1.2",
+    "dotenv": "^16.0.0"
   }
 }
