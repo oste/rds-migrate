@@ -8,11 +8,13 @@ const chalk = require("chalk");
 
 const engine = process.env.RDS_RDBMS || "postgres";
 
-const rdsDataClient = new RDSDataClient({
+const clientParams = {
   apiVersion: "2018-08-01",
   region: process.env.RDS_REGION,
   database: process.env.RDS_DATABASE || engine,
-});
+};
+
+const rdsDataClient = new RDSDataClient(clientParams);
 
 const params = {
   resourceArn: process.env.RDS_RESOURCE_ARN,
@@ -20,6 +22,15 @@ const params = {
 };
 
 const checkMigrationsSchema = async () => {
+  console.log(
+    chalk(
+      chalk.blue("Info:"),
+      `Starting check migrations schema for ${JSON.stringify({
+        ...clientParams,
+        ...params,
+      })}`
+    )
+  );
   try {
     await rdsDataClient.send(
       new ExecuteStatementCommand({
@@ -48,7 +59,9 @@ const checkMigrationsSchema = async () => {
       })
     );
   } catch (error) {
-    throw new Error("check migrations schema failed", { cause: error });
+    throw new Error(`check migrations schema failed. Error: ${error}`, {
+      cause: error,
+    });
   }
 };
 
