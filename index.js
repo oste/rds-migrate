@@ -2,6 +2,9 @@ require("dotenv").config();
 const {
   RDSDataClient,
   ExecuteStatementCommand,
+  BeginTransactionCommand,
+  RollbackTransactionCommand,
+  CommitTransactionCommand,
 } = require("@aws-sdk/client-rds-data");
 const fs = require("fs");
 const chalk = require("chalk");
@@ -14,6 +17,8 @@ const clientParams = {
   database: process.env.RDS_DATABASE || engine,
 };
 
+const [migrationPath, debug] = process.argv.slice(2);
+
 const rdsDataClient = new RDSDataClient(clientParams);
 
 const params = {
@@ -22,15 +27,17 @@ const params = {
 };
 
 const checkMigrationsSchema = async () => {
-  console.log(
-    chalk(
-      chalk.blue("Info:"),
-      `Starting check migrations schema for ${JSON.stringify({
-        ...clientParams,
-        ...params,
-      })}`
-    )
-  );
+  debug &&
+    console.log(
+      chalk(
+        chalk.bgYellow("Debug:"),
+        `Starting check migrations schema for ${JSON.stringify({
+          ...clientParams,
+          ...params,
+        })}`,
+        "\n\n"
+      )
+    );
   try {
     await rdsDataClient.send(
       new ExecuteStatementCommand({
@@ -80,8 +87,8 @@ const checkMigrationTable = async () => {
   }
 };
 
-const updateSchemaMigrationVersion = async (fileName) => {
-  const data = await rdsDataClient.send(
+const updateSchemaMigrationVersion = async (fileName, transactionId) => {
+  await rdsDataClient.send(
     new ExecuteStatementCommand({
       ...params,
       sql:
@@ -90,73 +97,98 @@ const updateSchemaMigrationVersion = async (fileName) => {
               VALUES (1, '${fileName}') ON CONFLICT (id) DO UPDATE SET version = excluded.version;`
           : `INSERT INTO MIGRATIONS.version (id, version)
               VALUES (1, '${fileName}') ON DUPLICATE KEY UPDATE version=VALUES(version);`,
+      transactionId,
     })
-  );
-  console.log(
-    chalk(
-      chalk.blue("Info:"),
-      `Migration Complete`,
-      chalk.magenta(fileName),
-      chalk.gray(JSON.stringify(data))
-    )
   );
 };
 
 const executeFileStatements = async (fileName) => {
-  const filePath = `${process.env.PWD}/${process.argv.slice(2)[0]}/${fileName}`;
+  const filePath = `${process.env.PWD}/${migrationPath}/${fileName}`;
   if (!fs.existsSync(filePath)) {
     throw new Error(`File does not exist ${filePath}`);
   }
 
   console.log(
-    chalk(chalk.blue("Info:"), `Running Migration`, chalk.magenta(fileName))
+    chalk(
+      chalk.blue("Info:"),
+      `Running Migration`,
+      chalk.magenta(fileName),
+      "\n\n"
+    )
   );
   const contents = fs.readFileSync(filePath, "utf8");
   const statements = contents.split(";");
 
-  for (let i = 0; i < statements.length; i++) {
-    let sql = statements[i];
-    if (!sql || sql == "\n") {
-      continue;
-    }
-    console.log(
-      chalk(
-        chalk.blue("Info:"),
-        `Running Migration Statement`,
-        chalk.magenta(i + 1),
-        "\n",
-        sql,
-        "\n"
-      )
-    );
+  const { transactionId } = await rdsDataClient.send(
+    new BeginTransactionCommand(params)
+  );
 
-    const data = await rdsDataClient.send(
-      new ExecuteStatementCommand({
+  try {
+    for (let i = 0; i < statements.length; i++) {
+      let sql = statements[i]?.trim();
+      if (!sql || sql == "\n") {
+        continue;
+      }
+      console.log(
+        chalk(
+          chalk.blue("Info:"),
+          `Running Migration Statement`,
+          chalk.magenta(i + 1),
+          "\n",
+          sql
+        )
+      );
+
+      await rdsDataClient.send(
+        new ExecuteStatementCommand({
+          ...params,
+          sql,
+          transactionId,
+        })
+      );
+
+      console.log(
+        chalk(
+          chalk.green("Success:"),
+          `Migration Statement`,
+          chalk.magenta(i + 1),
+          "\n\n"
+        )
+      );
+    }
+
+    await updateSchemaMigrationVersion(fileName, transactionId);
+    await rdsDataClient.send(
+      new CommitTransactionCommand({
         ...params,
-        sql,
+        transactionId,
       })
     );
-
     console.log(
       chalk(
-        chalk.blue("Info:"),
-        `Success Migration Statement`,
-        chalk.magenta(i + 1),
-        "\n",
-        chalk.gray(JSON.stringify(data)),
-        "\n\n"
+        chalk.green("Success:"),
+        `Migration Complete`,
+        chalk.magenta(fileName)
       )
     );
+  } catch (error) {
+    await rdsDataClient.send(
+      new RollbackTransactionCommand({
+        ...params,
+        transactionId,
+      })
+    );
+    throw new Error(`Statement in ${fileName} failed. Error: ${error}`, {
+      cause: error,
+    });
   }
-  await updateSchemaMigrationVersion(fileName);
 };
 
-const getFileNameTime = (fileName) => BigInt(fileName.split("_")[0]);
+const getFileNameTime = (fileName) =>
+  BigInt(fileName.split("_")[0].replace(".sql", ""));
 
 const migrate = async (currentMigrationVersion) => {
-  const files = fs.readdirSync(
-    `${process.env.PWD}/${process.argv.slice(2)[0]}`
-  );
+  const files = fs.readdirSync(`${process.env.PWD}/${migrationPath}`);
 
   const currentMigrationFileTime = getFileNameTime(currentMigrationVersion);
 
@@ -169,7 +201,7 @@ const migrate = async (currentMigrationVersion) => {
     .sort((a, b) =>
       getFileNameTime(a) < getFileNameTime(b)
         ? -1
-        : executeFileStatements(a) > executeFileStatements(b)
+        : getFileNameTime(a) > getFileNameTime(b)
         ? 1
         : 0
     );
