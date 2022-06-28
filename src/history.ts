@@ -70,7 +70,7 @@ export class History {
     return props.targetVersion;
   }
 
-  private async executeDiff(diff: ScriptDiff, allowDowngrade: boolean = false) {
+  private async executeDiff(diff: ScriptDiff, allowDowngrade = false) {
     if (allowDowngrade) {
       for (const script of diff.downgrade) {
         await this.executeVersion(script, true);
@@ -93,7 +93,7 @@ export class History {
     }
   }
 
-  private async executeVersion(script: Script, downgrade: boolean = false) {
+  private async executeVersion(script: Script, downgrade = false) {
     if (downgrade) {
       if (!script.downgradeSqlCode || !script.downgradeSqlCode.length) {
         console.warn(
@@ -137,7 +137,7 @@ export class History {
     }
   }
 
-  private async storeVersion(script: Script, storeTime: boolean = true) {
+  private async storeVersion(script: Script, storeTime = true) {
     const parameters = {
       sqlCode: script.sqlCode,
     } as StatementParameters;

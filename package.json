@@ -31,19 +31,20 @@
   },
   "license": "ISC",
   "dependencies": {
-    "@aws-cdk/aws-rds": "^1.101.0",
-    "@aws-cdk/core": "^1.101.0",
-    "@milltechfx/base-aws-stack": "^1.0.46",
-    "@types/jest": "^27.0.3",
+    "@aws-cdk/aws-rds": "^1.161.0",
+    "@aws-cdk/aws-ssm": "^1.161.0",
+    "@aws-cdk/core": "^1.161.0",
+    "@milltechfx/base-aws-stack": "^1.12.4",
+    "@types/jest": "^28.1.3",
     "aws-sdk": "^2.1011.0",
-    "dotenv": "^8.2.0",
+    "dotenv": "^16.0.1",
     "gts": "^3.1.0"
   },
   "devDependencies": {
-    "@types/node": "^15.0.1",
+    "@types/node": "^18.0.0",
     "gts": "^3.1.0",
-    "jest": "^27.4.4",
-    "ts-jest": "^27.1.1",
-    "typescript": "^4.4.3"
+    "jest": "^28.1.1",
+    "ts-jest": "^28.0.5",
+    "typescript": "^4.7.4"
   }
 }
