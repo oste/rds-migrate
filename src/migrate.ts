@@ -29,6 +29,8 @@ async function execute() {
       'Database migration failed, no changes should have been committed'
     );
     console.error(error);
-    process.exit(1);
+    throw new Error(
+      'Database migration failed, no changes should have been committed'
+    );
   }
 })();

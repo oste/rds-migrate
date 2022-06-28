@@ -32,6 +32,7 @@
   "license": "ISC",
   "dependencies": {
     "@aws-cdk/aws-rds": "^1.161.0",
+    "@aws-cdk/aws-ssm": "^1.161.0",
     "@aws-cdk/core": "^1.161.0",
     "@milltechfx/base-aws-stack": "^1.12.4",
     "@types/jest": "^28.1.3",

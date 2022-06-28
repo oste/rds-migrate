@@ -185,7 +185,7 @@ export class Migration {
   async executeInTransaction(
     sqlStatement: SqlStatement | string,
     parameters: StatementParameters = {},
-    skipWritingLog: boolean = false
+    skipWritingLog = false
   ): Promise<{records: any}> {
     const client = this.getClient();
     const statement =
