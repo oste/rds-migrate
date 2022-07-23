@@ -81,7 +81,7 @@ const checkMigrationTable = async () => {
         sql: `SELECT version FROM MIGRATIONS.version WHERE id = 1`,
       })
     );
-    return records.length ? records[0][0]["stringValue"] : false;
+    return records.length ? records[0][0]["stringValue"] : 0;
   } catch (error) {
     throw new Error("check migration table failed", { cause: error });
   }
@@ -185,7 +185,7 @@ const executeFileStatements = async (fileName) => {
 };
 
 const getFileNameTime = (fileName) =>
-  BigInt(fileName.split("_")[0].replace(".sql", ""));
+  BigInt(`${fileName}`.split("_")[0].replace(".sql", ""));
 
 const migrate = async (currentMigrationVersion) => {
   const files = fs.readdirSync(`${process.env.PWD}/${migrationPath}`);
