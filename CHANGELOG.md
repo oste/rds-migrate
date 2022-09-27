@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.5](https://github.com/milltechfx/rds-migrate/compare/v3.0.4...v3.0.5) (2022-09-27)
+
+
+### Bug Fixes
+
+* package updates ([b9ab879](https://github.com/milltechfx/rds-migrate/commit/b9ab879660976669aa3ceadd9e438ca38230ff98))
+
 ## 3.0.4 (2022-06-28)
 
 
