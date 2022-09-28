@@ -69,7 +69,6 @@ Migration is automatic, migrations schema changes accordingly and scripts previo
 ## Running migrations from local machine
 Beside `STACK_NAME`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables must be set to contain valid credentials of a user belonging to `dev-rdsMigrate-iamGroup-euw1` IAM group. `.env` file is supported.
 
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
